@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'payment_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TournamentScreen extends StatelessWidget {
   const TournamentScreen({super.key});
@@ -36,23 +38,29 @@ class TournamentScreen extends StatelessWidget {
                   subtitle: Text(
                     '${data['game']} • ${data['date']} • ${data['time']}',
                   ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('₹${data['entryFee']}'),
-                      const SizedBox(height: 4),
-                      Text(
-                        data['status'],
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        },
-      ),
+                  trailing: ElevatedButton(
+  child: Text('Pay ₹${data['entryFee']}'),
+  onPressed: () {
+    final payment = PaymentService();
+
+    payment.init(
+      onSuccess: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment Successful 🎉')),
+        );
+      },
+      onFailure: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment Failed ❌')),
+        );
+      },
     );
-  }
-}
+
+    payment.openCheckout(
+      amount: data['entryFee'],
+      description: data['title'],
+      email: FirebaseAuth.instance.currentUser?.email ?? '',
+    );
+  },
+),
+
