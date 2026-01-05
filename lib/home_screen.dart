@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'tournament_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
