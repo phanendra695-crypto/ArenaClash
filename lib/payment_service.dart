@@ -22,7 +22,7 @@ class PaymentService {
     required String email,
   }) {
     var options = {
-      'key': 'RAZORPAY_KEY_ID', // 🔴 replace later
+      'key': 'rzp_test_S09OIpiOmgMzCO', // 🔴 replace later
       'amount': amount * 100, // in paise
       'name': 'ArenaClash',
       'description': description,
