@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'payment_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'payment_service.dart';
+import 'room_screen.dart';
 
 class TournamentScreen extends StatelessWidget {
   const TournamentScreen({super.key});
+
+  Future<bool> alreadyJoined(String tournamentId) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    final result = await FirebaseFirestore.instance
+        .collection('joins')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .where('userId', isEqualTo: user!.uid)
+        .get();
+
+    return result.docs.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +30,6 @@ class TournamentScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('tournaments')
-            .orderBy('date')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -31,6 +44,7 @@ class TournamentScreen extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             children: snapshot.data!.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
@@ -39,28 +53,79 @@ class TournamentScreen extends StatelessWidget {
                     '${data['game']} • ${data['date']} • ${data['time']}',
                   ),
                   trailing: ElevatedButton(
-  child: Text('Pay ₹${data['entryFee']}'),
-  onPressed: () {
-    final payment = PaymentService();
+                    child: Text('Pay ₹${data['entryFee']}'),
+                    onPressed: () async {
+                      final joined = await alreadyJoined(doc.id);
 
-    payment.init(
-      onSuccess: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment Successful 🎉')),
-        );
-      },
-      onFailure: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment Failed ❌')),
-        );
-      },
+                      if (joined) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('You already joined this match'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      final payment = PaymentService();
+
+                      payment.init(
+                        onSuccess: () async {
+                          final user =
+                              FirebaseAuth.instance.currentUser;
+
+                          await FirebaseFirestore.instance
+                              .collection('joins')
+                              .add({
+                            'tournamentId': doc.id,
+                            'userId': user!.uid,
+                            'email': user.email,
+                            'joinedAt': Timestamp.now(),
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Joined Successfully 🎉'),
+                            ),
+                          );
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RoomScreen(
+                                roomId: data['roomId'],
+                                roomPassword:
+                                    data['roomPassword'],
+                              ),
+                            ),
+                          );
+                        },
+                        onFailure: () {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Payment Failed ❌'),
+                            ),
+                          );
+                        },
+                      );
+
+                      payment.openCheckout(
+                        amount: data['entryFee'],
+                        description: data['title'],
+                        email: FirebaseAuth.instance
+                                .currentUser?.email ??
+                            '',
+                      );
+                    },
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
     );
-
-    payment.openCheckout(
-      amount: data['entryFee'],
-      description: data['title'],
-      email: FirebaseAuth.instance.currentUser?.email ?? '',
-    );
-  },
-),
-
+  }
+}
