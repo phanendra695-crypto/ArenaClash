@@ -20,12 +20,16 @@ class HomeScreen extends StatelessWidget {
           )
         ],
       ),
-      body: const Center(
-        child: Text(
-          'Welcome to ArenaClash 🎮',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      body: Center(
+  child: ElevatedButton(
+    child: const Text('View Tournaments'),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const TournamentScreen(),
         ),
-      ),
-    );
-  }
-}
+      );
+    },
+  ),
+),
